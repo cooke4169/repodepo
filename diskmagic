@@ -1,0 +1,33 @@
+# Description: This script is to output disk information regarding mount points.
+# Version 1.7
+
+
+while getopts ":b?" opt; do
+  case ${opt} in
+    b ) echo -e "DISK\tSIZE\tSCSI\tMOUNT\t\tVSCSI"
+      ;;
+    \? ) echo "usage: diskmagic [-hb] [filesytem]"
+         echo -e "\t[-b [print banner information]]"
+         echo -e "\t[-h [print help]]"
+	 echo " " 
+	 echo -e "example: diskmagic /data01"
+	 echo ""
+      ;;
+  esac
+done
+
+shift $((OPTIND-1))
+
+fs=$1
+
+case ${fs} in '') echo "$0: Exiting, No filesystem defined. Please use -h switch to see usage." >&2; exit 1;; esac
+
+disknfo=$(lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,MAJ:MIN | grep -e disk -e ${fs} 2>/dev/null | grep -B1 ${fs} 2>/dev/null | grep disk 2>/dev/null | awk '{print $1,$2,$4}')
+
+echo "$disknfo" | while read disk size diskno junk; do # "junk" var receives the rest of the line, if there are additional columns
+	scsi=$(lsscsi -d | grep $diskno] 2>/dev/null | cut -f1 -d" "| cut -f1,3 -d: | sed 's/\[//g')
+	vscsi=$(echo $scsi | sed -e 's/^2/0/' -e 's/^4/1/' -e 's/^5/2/')
+	echo -en "$disk\t$size\t$scsi\t$fs\t$vscsi\n"
+done
+
+exit 0
